@@ -15,7 +15,6 @@ END
 arm-none-eabi-nm -C -g flasher-sam3x.o | awk '{if (!match($3,/^_/)) {sub(/\(\)/,"",$3); print "    this."$3" =  0x"$1";"}}' >> $1.js
 
 cat >> $1.js <<END
-    };
     this.blob = [
 END
 
