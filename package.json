@@ -1,0 +1,25 @@
+{
+  "name": "@synthetos/node-sam-ba",
+  "version": "0.1.0",
+  "description": "A node (JavaScript) implementation of Atmel's SAM-BA flashing utility protocol.",
+  "main": "sam_ba.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Synthetos",
+    "Atmel",
+    "SAM-BA",
+    "SAMBA",
+    "bossac"
+  ],
+  "author": "Rob Giseburt <giseburt@gmail.com>",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "eslint": "^3.9.1",
+    "eslint-config-google": "^0.7.0"
+  },
+  "dependencies": {
+    "serialport": "^4.0.6"
+  }
+}
