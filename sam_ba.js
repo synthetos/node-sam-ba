@@ -16,6 +16,20 @@ class SamBA {
 
     this._data = [];
     this._dataPromises = [];
+
+    this.stackAddress = 0;
+    this.jumpAddress = 0;
+  }
+
+  /**
+   * Set the information from the blob in order to call go()
+   *
+   * @param  {number} stackAddress this is the serialport object
+   * @param  {number} jumpAddress this is the serialport object
+   */
+  setJumpData(stackAddress, jumpAddress) {
+    this.stackAddress = stackAddress;
+    this.jumpAddress = jumpAddress;
   }
 
   /**
@@ -72,7 +86,16 @@ class SamBA {
    * @return {Promise}     Promise to be fulfilled when the request is sent
    */
   go(address) {
-    return this._writeWithPromise(this._goCmd(address));
+    if (this.jumpAddress === 0 || this.stackAddress === 0) {
+      return Promise.reject('setJumpData() was apparently not called.');
+    }
+    return this.writeWord(this.jumpAddress, address)
+    .then(()=>{
+      return this.writeWord(this.stackAddress, address+1);
+    })
+    .then(()=>{
+      return this._writeWithPromise(this._goCmd(this.jumpAddress));
+    });
   }
 
   /**
@@ -124,7 +147,7 @@ class SamBA {
         });
     }
 
-    return this._writeWithPromise(this._readCmd(address, data))
+    return this._writeWithPromise(this._readCmd(address, length))
       .then(()=>{
         return this._readWithPromise(length);
       });
@@ -205,14 +228,14 @@ class SamBA {
         this._handleDataPromises();
       }, timeout);
       this._dataPromises.push(p);
-      setTimeout(()=>{
-        this.serialPort.flush((err)=> {
-          if (err) {
-            reject(err);
-            return;
-          }
-        });
-      }, 10);
+      // setTimeout(()=>{
+      //   this.serialPort.flush((err)=> {
+      //     if (err) {
+      //       reject(err);
+      //       return;
+      //     }
+      //   });
+      // }, 10);
     });
   }
 
@@ -261,7 +284,7 @@ class SamBA {
         // we timed out but didn't get any data, fail
         this._dataPromises.shift(); // we can remove this from the list
         clearTimeout(topDataPromise);
-        topDataPromise.reject();
+        topDataPromise.reject(new Error("Read request timed out"));
       }
       break;
     }
@@ -286,15 +309,17 @@ class SamBA {
         // "packet" than what follows.
         // Also, a serialport.write() calls the callback when the data is
         // queued, NOT when the data is finished sending out of the machine.
-        this.serialPort.drain((err)=>{
-          if (err) {
-            reject(err);
-            return;
-          }
-          finalize();
-        });
-      });
-    });
+        process.nextTick(()=>{
+          this.serialPort.drain((err)=>{
+            if (err) {
+              reject(err);
+              return;
+            }
+            finalize();
+          }); // drain
+        }); // nextTick
+      }); // write
+    }); // Promise
   }
 
   /**
@@ -306,7 +331,7 @@ class SamBA {
    */
   _goCmd(address) {
     let addrBuffer = Buffer.alloc(4);
-    addrBuffer.writeUInt32BE(address);
+    addrBuffer.writeUInt32BE(address); // thumb mode, we go to the address + 1
     return `G${addrBuffer.toString('hex')}#`;
   }
 
@@ -350,19 +375,34 @@ class SamBA {
   _readByteCmd(address) {
     let addrBuffer = Buffer.alloc(4);
     addrBuffer.writeUInt32BE(address);
-    return `o${addrBuffer.toString('hex')},4#`;
+    return `o${addrBuffer.toString('hex')},#`;
   }
 
   /**
    * _readWordCmd - internal use only
-   * @param  {number} address Address to write to
+   * @param  {number} address Address to read from
    * @return {string}         Returns the string to send to the machine to
-   *                               initialte a send request.
+   *                               initialte a read request.
    */
   _readWordCmd(address) {
     let addrBuffer = Buffer.alloc(4);
     addrBuffer.writeUInt32BE(address);
-    return `w${addrBuffer.toString('hex')},4#`;
+    return `w${addrBuffer.toString('hex')},#`;
+  }
+
+  /**
+   * _readCmd - internal use only
+   * @param  {number} address Address to write to
+   * @param  {number} length  Buffer object containing *only* the data to send
+   * @return {string}         Returns the string to send to the machine to
+   *                               initialte a read request.
+   */
+  _readCmd(address, length) {
+    let addrBuffer = Buffer.alloc(4);
+    addrBuffer.writeUInt32BE(address);
+    let lengthBuffer = Buffer.alloc(4);
+    lengthBuffer.writeUInt32BE(length);
+    return `R${addrBuffer.toString('hex')},${lengthBuffer.toString('hex')}#`;
   }
 }
 
