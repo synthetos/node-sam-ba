@@ -50,25 +50,25 @@ class SamBA {
         return this._readWithPromise(2);
       })
       .then(()=>{
-        // ignore the response (it's just CRLF)
-        // now read the reset vector
-        return this.readWord(0);
-      })
-      .then((resetVector)=>{
-        this.resetVector = resetVector;
-        console.log('resetVector: 0x'+resetVector.toString(16));
-        // now read the chipId1
-        return this.readWord(0x400e0740);
-      })
-      .then((chipId1)=>{
-        this.chipId1 = chipId1;
-        console.log('chipId1: 0x'+chipId1.toString(16));
+      //   // ignore the response (it's just CRLF)
+      //   // now read the reset vector
+      //   return this.readWord(0);
+      // })
+      // .then((resetVector)=>{
+      //   this.resetVector = resetVector;
+      //   console.log('resetVector: 0x'+resetVector.toString(16));
+      //   // now read the chipId1
+      //   return this.readWord(0x400e0740);
+      // })
+      // .then((chipId1)=>{
+      //   this.chipId1 = chipId1;
+      //  console.log('chipId1: 0x'+chipId1.toString(16));
         // now read the chipId2
         return this.readWord(0x400e0940);
       })
-      .then((chipId2)=>{
-        this.chipId2 = chipId2;
-        console.log('chipId2: 0x'+chipId2.toString(16));
+      .then((chipId)=>{
+        this.chipId = chipId;
+        console.log('chipId: 0x'+chipId.toString(16));
         // now read the version
         return this.getVersion();
       })
@@ -107,7 +107,7 @@ class SamBA {
   write(address, data) {
     return this._writeWithPromise(this._writeCmd(address, data))
       .then(()=>{
-        return this._writeWithPromise(data);
+        return this._writeWithPromise(data, true);
       });
   }
 
@@ -296,9 +296,13 @@ class SamBA {
    * @param  {Buffer} data raw Buffer to write tot he serial port
    * @return {Promise}     Promise to be fulfilled when the data is sent
    */
-  _writeWithPromise(data) {
+  _writeWithPromise(data, logAsHex=false) {
     return new Promise((finalize, reject)=>{
-      console.log('> ' + data);
+      if (logAsHex) {
+        console.log('> ' + data.toString('hex'));
+      } else {
+        console.log('> ' + data);
+      }
       this.serialPort.write(data, (err)=>{
         if (err) {
           reject(err);
