@@ -1,17 +1,17 @@
 const EEFC_KEY = 0x5a;
 
-const EEFC_FCMD_GETD = 0x0;
-const EEFC_FCMD_WP = 0x1;
-const EEFC_FCMD_WPL = 0x2;
+// const EEFC_FCMD_GETD = 0x0;
+// const EEFC_FCMD_WP = 0x1;
+// const EEFC_FCMD_WPL = 0x2;
 const EEFC_FCMD_EWP = 0x3;
-const EEFC_FCMD_EWPL = 0x4;
-const EEFC_FCMD_EA = 0x5;
-const EEFC_FCMD_SLB = 0x8;
-const EEFC_FCMD_CLB = 0x9;
-const EEFC_FCMD_GLB = 0xa;
-const EEFC_FCMD_SGPB = 0xb;
-const EEFC_FCMD_CGPB = 0xc;
-const EEFC_FCMD_GGPB = 0xd;
+// const EEFC_FCMD_EWPL = 0x4;
+// const EEFC_FCMD_EA = 0x5;
+// const EEFC_FCMD_SLB = 0x8;
+// const EEFC_FCMD_CLB = 0x9;
+// const EEFC_FCMD_GLB = 0xa;
+// const EEFC_FCMD_SGPB = 0xb;
+// const EEFC_FCMD_CGPB = 0xc;
+// const EEFC_FCMD_GGPB = 0xd;
 
 /**
  * EEFC routing class
@@ -101,17 +101,19 @@ class EefcFlash {
     this.samBa.setJumpData(this.flashBlob.stack_address,
                            this.flashBlob.jump_address);
 
-    return this.samBa.write(this.flashBlob._sfixed, this.flashBlob.blob)
-      .then(()=>{
-        return this.samBa.go(this.flashBlob.flashInit);
-      })
-      .then(()=>{
-        return this.samBa.readWord(this.flashBlob.inited);
-      })
-      .then((data)=>{
-        console.log(`inited: ${data.toString(16)}`);
-        return Promise.resolve(); // pass an empty promise to maintain the chain
+    let p = this.samBa.write(this.flashBlob._sfixed, this.flashBlob.blob)
+    .then(()=>{
+      // SAM3 Errata (FWS must be 6)
+      return this.samBa.writeWord(this.EEFC0_FMR, 0x6 << 8);
+    });
+
+    if (this.planes > 1) {
+      p = p.then(()=>{
+        return this.samBa.writeWord(this.EEFC1_FMR, 0x6 << 8);
       });
+    }
+
+    return p;
   }
 
   /**
@@ -127,38 +129,96 @@ class EefcFlash {
       : this.flashBlob.buffer1;
     this.bufferNum = this.bufferNum === 0 ? 1 : 0;
 
-    return this.samBa.writeWord(this.flashBlob.bufferNum, bufferAddr)
+    let plane = 0;
+    let pageWithinPlane = page;
+    let fcr = this.EEFC0_FCR;
+    if ((this.planes > 1) && (page > (this.pages/2))) {
+      plane = 1;
+      pageWithinPlane = page - (this.pages/2);
+      fcr = this.EEFC1_FCR;
+    }
+
+    return this.waitForReady(plane)
       .then(()=>{
-        return this.samBa.writeWord(this.flashBlob.flashPage, page);
+        return this.samBa.writeWord(this.flashBlob.copyFromPtr, bufferAddr);
+      })
+      .then(()=>{
+        return this.samBa.writeWord(this.flashBlob.copyToPtr,
+                                    this.addr + (page*this.size));
+      })
+      .then(()=>{
+        return this.samBa.writeWord(this.flashBlob.copyLength,
+                                    data.length);
       })
       .then(()=>{
         return this.samBa.write(bufferAddr, data);
       })
       .then(()=>{
-        return this.samBa.go(this.flashBlob.flashPage);
-      });
+        return this.samBa.go(this.flashBlob.copyToFlash);
+      })
+      .then(()=>{
+        console.log(`fcr write plane: ${plane}, ` +
+                    `pageWithinPlane: ${pageWithinPlane}`);
+
+        return this.samBa.writeWord(
+          fcr,
+          ((EEFC_KEY << 24) | (EEFC_FCMD_EWP << 8) | pageWithinPlane)
+        );
+      })
+      .catch((e)=>{
+        console.log(`writePage FAILED: ${e}`);
+        return Promise.reject(e);
+      })
+      ;
   }
 
   /**
-   * wiatForDone - wait for FSR to go to 1
+   * waitForReady - wait for FSR to go to 1
    * @param {number} plane The flash plane to wait for
    * @return {Promise}     Promise that is resolved once the flashStatus goes
    *                       to 1
    */
-  waitForDone(plane) {
-    return new Promise((f)=>{
-      return samBa.readWord((plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR);
-    })
+  waitForReady(plane) {
+    console.log(`Reading FSP: 0x${
+      ((plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR).toString(16)
+    }`);
+    return this._tryToReadWord(
+      (plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR,
+      100
+    )
     .then((data)=>{
-      console.log(`FSP: ${data.toString(16)}`);
+      console.log(`FSP: 0x${data.toString(16)}`);
       if ((data & 1) === 1) {
-        return f();
+        return Promise.resolve();
       } else {
-        return waitForDone();
+        return this.waitForReady();
       }
     });
   }
 
-}
+  /**
+   * _tryToReadWord - attempt to read address, with a 100ms timeout
+   * @param {number} address The address to read
+   * @param {number} times maximum number of times to try to read it
+   * @return {Promise}     Promise that is resolved once the flashStatus goes
+   *                       to 1
+   */
+  _tryToReadWord(address, times) {
+    return new Promise((finish, reject)=>{
+      this.samBa.readWordTimeout(address, 500)
+      .then((v)=>{
+        return finish(v);
+      })
+      .catch(()=>{
+        if (times == 0) {
+          reject('tried too many times');
+          return;
+        }
+        return this._tryToReadWord(address, times-1);
+      });
+    });
+  }
+
+} // EefcFlash
 
 module.exports = EefcFlash;

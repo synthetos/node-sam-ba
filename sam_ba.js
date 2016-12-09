@@ -181,10 +181,32 @@ class SamBA {
         return this._readWithPromise(4);
       })
       .then((buf)=>{
-        return new Promise((finish)=>{
-          finish(buf.readUInt32LE());
-        });
+        return Promise.resolve(buf.readUInt32LE());
       });
+  }
+
+
+  /**
+   * readWordTimeout - read a 32-bit (4-byte) word, with a timeout
+   * @param  {number} address  the address to read the data from
+   * @param  {number} timeout  the maximum number of ms to wait for a response
+   * @return {Promise}  Promise to be fulfilled with the requested number
+   */
+  readWordTimeout(address, timeout) {
+    return this._writeWithPromise(this._readWordCmd(address))
+    .then(()=>{
+      return this._readWithPromise(4, timeout);
+    })
+    // .then((buf)=>{
+    //   if (undefined === buf) {
+    //     console.log(`failed`);
+    //     return Promise.reject("timed out");
+    //   }
+    //   return Promise.resolve(buf);
+    // })
+    .then((buf)=>{
+      return Promise.resolve(buf.readUInt32LE());
+    });
   }
 
 
@@ -284,7 +306,7 @@ class SamBA {
         // we timed out but didn't get any data, fail
         this._dataPromises.shift(); // we can remove this from the list
         clearTimeout(topDataPromise);
-        topDataPromise.reject(new Error("Read request timed out"));
+        topDataPromise.reject(new Error('Read request timed out'));
       }
       break;
     }
@@ -293,8 +315,9 @@ class SamBA {
   /**
    * _writeWithPromise - internal use only
    *
-   * @param  {Buffer} data raw Buffer to write tot he serial port
-   * @return {Promise}     Promise to be fulfilled when the data is sent
+   * @param  {Buffer} data      raw Buffer to write tot he serial port
+   * @param  {Boolean} logAsHex (dafault false)
+   * @return {Promise}          Promise to be fulfilled when the data is sent
    */
   _writeWithPromise(data, logAsHex=false) {
     return new Promise((finalize, reject)=>{

@@ -77,10 +77,11 @@ Promise.all([readPromise, spOpenPromise])
  * @return {Promise}      promise to write that page
  */
 function writePage(page) {
-  if ((page * eefc.size) < firmwareData.length && page < 2) {
+  if ((page * eefc.size) < firmwareData.length) {
     console.log(`writing page ${page} with data from` +
       ` ${page * eefc.size} to ` +
-      `${Math.min(((page+1) * eefc.size), firmwareData.length)-1}`);
+      `${Math.min(((page+1) * eefc.size), firmwareData.length)-1} out of ` +
+      `${firmwareData.length} bytes.`);
 
     let pageData = firmwareData.slice(page * eefc.size,
             Math.min(((page+1) * eefc.size), firmwareData.length)-1);
@@ -92,9 +93,9 @@ function writePage(page) {
           }, 100);
         });
       })
-      .then(()=> {
-        return waitForDone();
-      })
+      // .then(()=> {
+      //   return waitForDone();
+      // })
       .then(()=>{
         return writePage(page+1);
       });
