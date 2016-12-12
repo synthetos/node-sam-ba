@@ -5,14 +5,15 @@
  * flashing ROM routines.
  */
 class SamBA {
-
   /**
    * Create a SAM_BA object
    *
    * @param  {serialport} serialPort this is the serialport object
+   * @param  {number} debugLevel level of debugging output, 0 is none
    */
-  constructor(serialPort) {
+  constructor(serialPort, debugLevel) {
     this.serialPort = serialPort;
+    this.debugLevel = debugLevel;
 
     this._data = [];
     this._dataPromises = [];
@@ -39,7 +40,7 @@ class SamBA {
    */
   init() {
     this.serialPort.on('data', (data)=>{
-      // console.log('< ' + data.toString('hex'));
+      // this._log('< ' + data.toString('hex'));
       this._data.push({data: data, pos: 0});
       this._handleDataPromises();
     });
@@ -56,25 +57,25 @@ class SamBA {
       // })
       // .then((resetVector)=>{
       //   this.resetVector = resetVector;
-      //   console.log('resetVector: 0x'+resetVector.toString(16));
+      //   this._log('resetVector: 0x'+resetVector.toString(16));
       //   // now read the chipId1
       //   return this.readWord(0x400e0740);
       // })
       // .then((chipId1)=>{
       //   this.chipId1 = chipId1;
-      //  console.log('chipId1: 0x'+chipId1.toString(16));
+      //  this._log('chipId1: 0x'+chipId1.toString(16));
         // now read the chipId2
         return this.readWord(0x400e0940);
       })
       .then((chipId)=>{
         this.chipId = chipId;
-        console.log('chipId: 0x'+chipId.toString(16));
+        this._log('chipId: 0x'+chipId.toString(16));
         // now read the version
         return this.getVersion();
       })
       .then((vStr)=>{
         this.vers = vStr;
-        console.log('vStr: '+vStr);
+        this._log('vStr: '+vStr);
         return Promise.resolve(vStr);
       });
   }
@@ -199,7 +200,7 @@ class SamBA {
     })
     // .then((buf)=>{
     //   if (undefined === buf) {
-    //     console.log(`failed`);
+    //     this._log(`failed`);
     //     return Promise.reject("timed out");
     //   }
     //   return Promise.resolve(buf);
@@ -322,9 +323,9 @@ class SamBA {
   _writeWithPromise(data, logAsHex=false) {
     return new Promise((finalize, reject)=>{
       if (logAsHex) {
-        console.log('> ' + data.toString('hex'));
+        this._log('> ' + data.toString('hex'));
       } else {
-        console.log('> ' + data);
+        this._log('> ' + data);
       }
       this.serialPort.write(data, (err)=>{
         if (err) {
@@ -430,6 +431,16 @@ class SamBA {
     let lengthBuffer = Buffer.alloc(4);
     lengthBuffer.writeUInt32BE(length);
     return `R${addrBuffer.toString('hex')},${lengthBuffer.toString('hex')}#`;
+  }
+
+  /**
+   * _log - internal use only
+   * @param {string} text   value to log
+   */
+  _log(text) {
+    if (this.debugLevel > 0) {
+      console.log(text);
+    }
   }
 }
 
