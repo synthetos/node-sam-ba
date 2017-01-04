@@ -12,20 +12,18 @@ WORKDIR /code
 ENV PATH /tools/gcc-arm-none-eabi-5_4-2016q3/bin:"${PATH}"
 
 # make the sam3x flasher blob
-#OLD
-#RUN arm-none-eabi-g++ -mcpu=cortex-m4 -mthumb -ffunction-sections -fdata-sections -std=gnu++14 -fno-rtti -fno-exceptions -xc++ -DIAP_FUNC_ADDR=0x00100008 -Wl,--cref -Wl,--check-sections -nostartfiles -Tsam3x8a-sram.ld flasher.cpp -o flasher-sam3x.o
-#NEW  -fpic -msingle-pic-base
-#RUN arm-none-eabi-g++ -mcpu=cortex-m4 -mthumb -shared -fpic -msingle-pic-base -std=gnu++14 -fno-rtti -fno-exceptions -xc++ -DIAP_FUNC_ADDR=0x00100008 -nostartfiles flasher.cpp -o flasher-sam3x.so
-RUN arm-none-eabi-g++ -mcpu=cortex-m3 -mthumb -std=gnu++14 -fno-rtti -fno-exceptions -xc++ -DIAP_FUNC_ADDR=0x00100008 -nostartfiles -Tsam3x8a-sram.ld flasher.cpp -o flasher-sam3x.so
-
+RUN arm-none-eabi-g++ -O0 -g0 -mcpu=cortex-m3 -mthumb -std=gnu++14 -fno-rtti -fno-exceptions -xc++ -nostartfiles -Tsam3x8a-sram.ld flasher.cpp -o flasher-sam3x.so
 
 RUN arm-none-eabi-objdump -C -d flasher-sam3x.so
 RUN arm-none-eabi-nm -C -g flasher-sam3x.so
 RUN arm-none-eabi-readelf -a flasher-sam3x.so
 #RUN arm-none-eabi-nm -C -g flasher-sam3x.o | awk '{if (!match($3,/^_/)) {sub(/\(\)/,"",$3); print "\""$3"\": 0x"$1","}}'
-RUN arm-none-eabi-objcopy -O binary flasher-sam3x.so flasher-sam3x.bin
+#RUN arm-none-eabi-objcopy -O binary flasher-sam3x.so flasher-sam3x.bin
 RUN ./make_js.sh flasher-sam3x
 
-#RUN arm-none-eabi-g++ -mcpu=cortex-m4 -mthumb -ffunction-sections -fdata-sections -std=gnu++14 -fno-rtti -fno-exceptions -xc++  -DIAP_FUNC_ADDR=0x00800008 -Wl,--cref -Wl,--check-sections -nostartfiles -Tsams70n19-sram.ld flasher.cpp -o flasher-sams70.o
-
-#RUN ./make_js.sh flasher-sams70
+# make the sams70 flasher blob
+RUN arm-none-eabi-g++ -O0 -g0 -mcpu=cortex-m7 -mthumb -std=gnu++14 -fno-rtti -fno-exceptions -xc++ -nostartfiles -Tsams70n19-sram.ld -DBLOCK_SIZE=512 flasher.cpp -o flasher-sams70.so
+RUN arm-none-eabi-objdump -C -d flasher-sams70.so
+RUN arm-none-eabi-nm -C -g flasher-sams70.so
+RUN arm-none-eabi-readelf -a flasher-sams70.so
+RUN ./make_js.sh flasher-sams70
