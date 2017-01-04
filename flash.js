@@ -104,14 +104,17 @@ let firmwareData = null;
  * @return {Promise}      promise to be resolved when it's done writing
  */
 function writeBin(firmwareBin) {
-  return new Promise((done, fail)=>{
+  return new Promise((resolve, fail)=>{
     fs.readFile(firmwareBin, (err, data) => {
       if (err) {
         return fail(err);
       }
       firmwareData = data;
-      done();
+      resolve();
     });
+  })
+  .then(()=>{
+    return eefc.erase();
   })
   .then(()=>{
     return writePage(0);
@@ -142,10 +145,15 @@ function writePage(page) {
       // .then(()=> {
       //   return waitForDone();
       // })
-      .then((changed)=>{
-        // console.log(`    ${changed} words changed.`);
-
-        return writePage(page+1);
+      .then(()=>{
+        return eefc.verifyPage(page, pageData);
+      })
+      .then((passed)=>{
+        if (passed) {
+          return writePage(page+1);
+        }
+        console.log('VERIFY FAILED!');
+        return Promise.reject();
       });
   } else {
     return Promise.resolve();

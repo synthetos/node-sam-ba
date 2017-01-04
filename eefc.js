@@ -3,20 +3,20 @@
 const EEFC_KEY = 0x5a;
 
 // const EEFC_FCMD_GETD = 0x0;
-// const EEFC_FCMD_WP = 0x1;
+const EEFC_FCMD_WP = 0x1;
 // const EEFC_FCMD_WPL = 0x2;
-const EEFC_FCMD_EWP = 0x3;
+// const EEFC_FCMD_EWP = 0x3;
 // const EEFC_FCMD_EWPL = 0x4;
-// const EEFC_FCMD_EA = 0x5;
+const EEFC_FCMD_EA = 0x5;
 // const EEFC_FCMD_SLB = 0x8;
 // const EEFC_FCMD_CLB = 0x9;
 // const EEFC_FCMD_GLB = 0xa;
-const EEFC_FCMD_SGPB = 0xb;
-const EEFC_FCMD_CGPB = 0xc;
+const EEFC_FCMD_SGPB = 0xB;
+const EEFC_FCMD_CGPB = 0xC;
 // const EEFC_FCMD_GGPB = 0xd;
 
-const RSTC_CR_KEY = 0xa5;
-const RSTC_CR_PROCRST = 1;
+const RSTC_CR_KEY = 0xA5;
+const RSTC_CR_PROCRST = (1 << 0);
 const RSTC_CR_PERRST = (1 << 2);
 
 /**
@@ -35,6 +35,7 @@ class EefcFlash {
    * @param {number} stack
    * @param {number} regs
    * @param {number} resetRegisterBase
+   * @param {number} resetCommand
    * @param {boolean} canBrownout
    * @param {Object} flashBlob
    */
@@ -95,7 +96,7 @@ class EefcFlash {
             32,         // lockRegions
             0x20001000, // user
             0x20010000, // stack
-            0x400e0a00, // regs
+            0X400E0A00, // regs
             0x400E1A00, // reset register base
                         // reset cmd
             ((RSTC_CR_KEY << 24) | RSTC_CR_PROCRST | RSTC_CR_PERRST) >>> 0,
@@ -104,6 +105,83 @@ class EefcFlash {
             );
         break;
       }
+      // SAM E70, S70, V70, V71
+      case 0xA1020E00: // E70[JQN]21
+      case 0xA1120E00: // S70[JQN]21
+      case 0xA1220E00: // V71[JQN]21
+      // NB. there is no V70[JQN]21
+      {
+        //  flash = new EefcFlash(samba, "ATSAM(SEV)70x21", 0x400000, 4096, 512, 1, 128, 0x20401000, 0x20420000, 0x400e0c00, false);
+        let FlashBlob = require('./upload-blob/output/flasher-sams70');
+        return new EefcFlash(
+            samBa,      // samBa
+            0x400000,    // addr
+            4096,       // pages
+            512,        // size
+            1,          // planes
+            128,         // lockRegions
+            0x20401000, // user
+            0x20420000, // stack
+            0X400E0C00, // regs
+            0x400E1800, // reset register base
+                        // reset cmd
+            ((RSTC_CR_KEY << 24) | RSTC_CR_PROCRST) >>> 0,
+            false,       // canBrownout
+            new FlashBlob()
+            );
+        break;
+      }
+      case 0xA1020C00: // E70[JQN]20
+      case 0xA1120C00: // S70[JQN]20
+      case 0xA1220C00: // V71[JQN]20
+      case 0xA1320C00: // V70[JQN]20
+      {
+        // flash = new EefcFlash(samba, "ATSAM(SEV)70x20", 0x400000, 2048, 512, 1,  64, 0x20401000, 0x20420000, 0x400e0c00, false);
+        let FlashBlob = require('./upload-blob/output/flasher-sams70');
+        return new EefcFlash(
+            samBa,      // samBa
+            0x400000,    // addr
+            2048,       // pages
+            512,        // size
+            1,          // planes
+            64,         // lockRegions
+            0x20401000, // user
+            0x20420000, // stack
+            0X400E0C00, // regs
+            0x400E1800, // reset register base
+                        // reset cmd
+            ((RSTC_CR_KEY << 24) | RSTC_CR_PROCRST) >>> 0,
+            false,       // canBrownout
+            new FlashBlob()
+            );
+        break;
+      }
+      case 0xA10D0A00: // E70[JQN]19
+      case 0xA11D0A00: // S70[JQN]19
+      case 0xA12D0A00: // V71[JQN]19
+      case 0xA13D0A00: // V70[JQN]19
+      {
+        // flash = new EefcFlash(samba, "ATSAM(SEV)70x19", 0x400000, 1024, 512, 1,  32, 0x20401000, 0x20420000, 0x400e0c00, false);
+        let FlashBlob = require('./upload-blob/output/flasher-sams70');
+        return new EefcFlash(
+            samBa,      // samBa
+            0x400000,    // addr
+            1024,       // pages
+            512,        // size
+            1,          // planes
+            32,         // lockRegions
+            0x20401000, // user
+            0x20420000, // stack
+            0X400E0C00, // regs
+            0x400E1800, // reset register base
+                        // reset cmd
+            ((RSTC_CR_KEY << 24) | RSTC_CR_PROCRST) >>> 0,
+            false,       // canBrownout
+            new FlashBlob()
+            );
+        break;
+      }
+
       default:
         return null;
     }
@@ -118,14 +196,14 @@ class EefcFlash {
     this.samBa.setJumpData(this.flashBlob.stack_address,
                            this.flashBlob.jump_address);
 
-    let p = this.samBa.write(this.flashBlob._sfixed, this.flashBlob.blob)
-    .then(()=>{
-      // SAM3 Errata (FWS must be 6)
-      return this.samBa.writeWord(this.EEFC0_FMR, 0x6 << 8);
-    });
+    let p = this.samBa.write(this.flashBlob._sfixed, this.flashBlob.blob);
 
     if (this.planes > 1) {
       p = p.then(()=>{
+        // SAM3 Errata (FWS must be 6)
+        return this.samBa.writeWord(this.EEFC0_FMR, 0x6 << 8);
+      })
+      .then(()=>{
         return this.samBa.writeWord(this.EEFC1_FMR, 0x6 << 8);
       });
     }
@@ -134,17 +212,42 @@ class EefcFlash {
   }
 
   /**
-   * writePage - write the provided data tot he specified page
+   * erase - erase all flash
+   * @return {Promise}     Promise that, when fulfilled, the flash has been
+   *                       erased
+   */
+  erase() {
+    return this.writeFCR(0, EEFC_FCMD_EA, 0)
+    .then(()=>{
+      return this.waitForReady(0);
+    })
+    .then(()=>{
+      if ((this.planes > 1)) {
+        return this.writeFCR(1, EEFC_FCMD_EA, 0)
+        .then(()=>{
+          return this.waitForReady(1);
+        });
+      }
+      return Promise.resolve();
+    })
+    ;
+  }
+
+  /**
+   * writePage - write the provided data to the specified page
    * @param {number} page  the number of the page to store the data in
    * @param {Buffer} data  containing the data to be delivered tot he machine
    * @return {Promise}     Promise that, when fulfilled, the data has been
    *                       delievered to the machine
    */
   writePage(page, data) {
-    let bufferAddr = this.bufferNum === 0
-      ? this.flashBlob.buffer0
-      : this.flashBlob.buffer1;
-    this.bufferNum = this.bufferNum === 0 ? 1 : 0;
+    // let bufferAddr = this.bufferNum === 0
+    //   ? this.flashBlob.buffer0
+    //   : this.flashBlob.buffer1;
+    // this.bufferNum = this.bufferNum === 0 ? 1 : 0;
+
+    // let bufferAddr = this.flashBlob.buffer0;
+    // this.bufferNum = 0;
 
     let plane = 0;
     let pageWithinPlane = page;
@@ -153,7 +256,11 @@ class EefcFlash {
       pageWithinPlane = page - (this.pages/2);
     }
 
+/*
     return this.samBa.write(bufferAddr, data)
+    .then(()=>{
+      return this.waitForReady(plane);
+    })
     .then(()=>{
       return this.samBa.writeWord(this.flashBlob.copyFromPtr, bufferAddr);
     })
@@ -172,21 +279,21 @@ class EefcFlash {
       return this.samBa.go(this.flashBlob.copyToFlash);
     })
     .then(()=>{
-    //   return this.samBa.readWord(this.flashBlob.changed);
-    // })
-    // .then((changed)=>{
-    //   this._log(`fcr write plane: ${plane}, ` +
-    //               `pageWithinPlane: ${pageWithinPlane}, ` +
-    //               `changed: ${changed}`);
-    //
-    //   if (!changed) {
-    //     return Promise.resolve(0);
-    //   }
-
       return this.writeFCR(plane, EEFC_FCMD_EWP, pageWithinPlane);
-      // .then(()=>{
-      //   return Promise.resolve(changed);
-      // });
+    })
+    .then(()=>{
+      return this.waitForReady(plane);
+    })
+    .catch((e)=>{
+      this._log(`writePage FAILED: ${e}`);
+      return Promise.reject(e);
+    })
+    ;
+*/
+
+    return this.samBa.write(this.addr + (page*this.size), data)
+    .then(()=>{
+      return this.writeFCR(plane, EEFC_FCMD_WP, pageWithinPlane);
     })
     .then(()=>{
       return this.waitForReady(plane);
@@ -197,6 +304,23 @@ class EefcFlash {
     })
     ;
   }
+
+
+    /**
+     * verifyPage - read the  specified page and comare it to the provided data
+     * @param {number} page  the number of the page to store the data in
+     * @param {Buffer} data  containing the data to be delivered tot he machine
+     * @return {Promise}     Promise that, when fulfilled, the data has been
+     *                       verified. Will contain a boolean value.
+     */
+    verifyPage(page, data) {
+      return this.samBa.verify(this.addr + (page*this.size), data)
+      .catch((e)=>{
+        this._log(`writePage FAILED: ${e}`);
+        return Promise.reject(e);
+      })
+      ;
+    }
 
   /**
    * setBoot - set the boot to be from flash or ROM
@@ -251,17 +375,22 @@ class EefcFlash {
    *                       to 1
    */
   waitForReady(plane = 0) {
-    this._log(`Reading FSP: 0x${
+    this._log(`Reading FSR: 0x${
       ((plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR).toString(16)
-    }`);
+    } (plane: ${plane})`);
     return this._tryToReadWord(
       (plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR,
       100
     )
     .then((data)=>{
-      this._log(`FSP: 0x${data.toString(16)}`);
+      this._log(`FSR: 0x${data.toString(16)}`);
+      if ((data & 2)) {
+        // there was an error
+        // this._log('There was an EEFC error');
+        return Promise.reject('There was an EEFC error');
+      }
       if ((data & 1) === 1) {
-        if (plane == 0) {
+        if ((plane == 0) && (this.planes > 1)) {
           return this.waitForReady(1);
         }
         return Promise.resolve();
