@@ -114,7 +114,7 @@ class SamBA {
     //   });
 
     return this.writeWord(address, data.slice(offset, offset+4).readUInt32LE())
-      .then(()=>{
+    .then(()=>{
         if ((offset + 8) <= data.length) {
           return this.write(address+4, data, offset+4);
         }
@@ -124,7 +124,7 @@ class SamBA {
 
 
   /**
-   * verify - read data fromthe board and compare it to the data provided
+   * verify - read data from the board and compare it to the data provided
    * @param  {number} address  the address to send the data to
    * @param  {Buffer} data     a Buffer containing JUST the data to verify
    * @param  {number} offset   the offset into data to start verifying from
@@ -140,6 +140,7 @@ class SamBA {
         return Promise.resolve(false);
       }
       if ((offset + 8) <= data.length) {
+        this._log(`Verify passed: ${value.toString(16)} == ${correctValue.toString(16)}`);
         return this.verify(address+4, data, offset+4);
       }
       return Promise.resolve(true); // we're done

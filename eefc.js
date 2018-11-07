@@ -274,8 +274,9 @@ class EefcFlash {
   setBoot(flash = true) {
     return this.waitForReady()
     .then(()=>{
-       // The arg is a bit number, not a mask!
-       // 0 is the security bit, leave that alone!!
+      this._log(`set boot: ${flash ? 'to flash' : 'to ROM'}`);
+      // The arg is a bit number, not a mask!
+      // 0 is the security bit, leave that alone!!
       return this.writeFCR(0,
         flash ? EEFC_FCMD_SGPB : EEFC_FCMD_CGPB, 1);
     })
@@ -319,7 +320,7 @@ class EefcFlash {
    *                       to 1
    */
   waitForReady(plane = 0) {
-    this._log(`Reading FSR: 0x${
+    this._log(`Checking ready (FSR): 0x${
       ((plane == 0) ? this.EEFC0_FSR : this.EEFC1_FSR).toString(16)
     } (plane: ${plane})`);
     return this._tryToReadWord(
