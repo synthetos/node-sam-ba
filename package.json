@@ -16,11 +16,11 @@
   "author": "Rob Giseburt <giseburt@gmail.com>",
   "license": "GPL-3.0",
   "devDependencies": {
-    "eslint": "^3.9.1",
-    "eslint-config-google": "^0.7.0"
+    "eslint": "^3.19.0",
+    "eslint-config-google": "^0.7.1"
   },
   "dependencies": {
-    "serialport": "^4.0.6",
-    "yargs": "^6.4.0"
+    "serialport": "^4.0.7",
+    "yargs": "^6.6.0"
   }
 }
