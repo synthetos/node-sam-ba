@@ -2,8 +2,14 @@
   "name": "@synthetos/node-sam-ba",
   "version": "0.1.0",
   "description": "A node (JavaScript) implementation of Atmel's SAM-BA flashing utility protocol.",
-  "main": "sam_ba.js",
+  "main": "lib/sam_ba.js",
+  "types": "lib/index.d.ts",
+  "bin": {
+    "flash": "lib/flash.js"
+  },
   "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -17,10 +23,12 @@
   "license": "GPL-3.0",
   "devDependencies": {
     "eslint": "^3.19.0",
-    "eslint-config-google": "^0.7.1"
+    "eslint-config-google": "^0.7.1",
+    "typescript": "^3.5.3"
   },
   "dependencies": {
-    "serialport": "^4.0.7",
-    "yargs": "^6.6.0"
+    "@types/serialport": "^7.0.4",
+    "serialport": "^7.1.*",
+    "yargs": "^13.2.*"
   }
 }
