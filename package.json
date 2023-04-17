@@ -20,7 +20,7 @@
     "eslint-config-google": "^0.7.1"
   },
   "dependencies": {
-    "serialport": "^4.0.7",
+    "serialport": "^10.5.0",
     "yargs": "^6.6.0"
   }
 }
